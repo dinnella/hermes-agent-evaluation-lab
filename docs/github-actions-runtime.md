@@ -93,7 +93,7 @@ Three practical choices belong in the MCP or LLM sidecar:
 
 `id-token: write` allows requesting an identity token; it does not itself grant cloud access. The relying party's trust policy is the authorization boundary. Do not forward the Actions OIDC request token or resulting cloud token to Hermes.
 
-For the Copilot smoke test, a user-owned fine-grained PAT with `Copilot Requests` is staged only into mitmproxy. The ordinary Actions token does not carry the user's Copilot subscription entitlement and remains in MCP.
+For the Copilot smoke test, a Copilot-capable OAuth `gho_*` token is staged only into mitmproxy. The ordinary Actions token does not carry the user's Copilot subscription entitlement and remains in MCP. Although GitHub documents fine-grained PATs with `Copilot Requests` for Copilot CLI, the direct Copilot endpoint used here rejected the tested PAT; the workflow therefore treats OAuth/app-user tokens as the supported direct-API credential set.
 
 ## Hermes Configuration
 

@@ -62,6 +62,9 @@ def main() -> int:
         failures,
     )
     require(launcher, "chmod 0444", "run.sh", failures)
+    require(launcher, "gho_*|ghu_*", "run.sh", failures)
+    require(launcher, "github_pat_*)", "run.sh", failures)
+    require(launcher, "Fine-grained PATs are documented for Copilot CLI", "run.sh", failures)
     reject(launcher, "cp proxy:/mitmproxy-conf", "run.sh", failures)
 
     require(proxy, 'host != "api.githubcopilot.com"', "mitmproxy/policy.py", failures)

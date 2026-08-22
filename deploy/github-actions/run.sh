@@ -19,9 +19,13 @@ export GITHUB_RUN_ID="${GITHUB_RUN_ID:-local}"
 : "${MITMPROXY_IMAGE:?Set MITMPROXY_IMAGE to a pinned digest}"
 
 case "${COPILOT_GITHUB_TOKEN}" in
-    gho_*|github_pat_*|ghu_*) ;;
+    gho_*|ghu_*) ;;
+    github_pat_*)
+        echo "ERROR: Fine-grained PATs are documented for Copilot CLI but were rejected by the direct Copilot API used by this workflow. Use a Copilot-capable OAuth token (gho_*) or app user token (ghu_*)." >&2
+        exit 1
+        ;;
     *)
-        echo "ERROR: COPILOT_GITHUB_TOKEN must be gho_*, github_pat_*, or ghu_*; the normal Actions github.token is not a Copilot credential" >&2
+        echo "ERROR: COPILOT_GITHUB_TOKEN must be gho_* or ghu_*; the normal Actions github.token is not a Copilot credential" >&2
         exit 1
         ;;
 esac

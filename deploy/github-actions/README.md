@@ -61,7 +61,11 @@ The sample deliberately keeps `security.allow_private_urls: false`. In the pinne
 6. Protect workflow and deployment files with CODEOWNERS.
 7. Run only from a protected branch until the untrusted-PR/no-secrets profile has separate infrastructure.
 
-The normal `${{ github.token }}` cannot power Copilot inference. Create a user-owned fine-grained PAT with the account-level `Copilot Requests` permission and short expiration, then save it as `COPILOT_GITHUB_TOKEN`. The workflow's ordinary token remains confined to MCP for read-only repository API calls.
+The normal `${{ github.token }}` cannot power Copilot inference. Use a Copilot-capable OAuth token (`gho_*`) or GitHub App user-to-server token (`ghu_*`) as `COPILOT_GITHUB_TOKEN`. The workflow's ordinary token remains confined to MCP for read-only repository API calls.
+
+GitHub documents user-owned fine-grained PATs with `Copilot Requests` for **Copilot CLI**, but the direct `api.githubcopilot.com` endpoint used by this Hermes integration rejected the tested PAT with `HTTP 400: Personal Access Tokens are not supported for this endpoint`. The launcher now rejects `github_pat_*` credentials before starting containers. This is an observed direct-API limitation, not a claim that the same PAT cannot work through GitHub's own Copilot CLI.
+
+For the current smoke test, `gh auth token` produced a `gho_*` token and a direct request to the Copilot model catalog returned HTTP 200. That OAuth token has broader GitHub CLI scopes than a dedicated inference credential, so store it only in the protected repository secret, keep the workflow manual/read-only, and rotate it after the evaluation. A dedicated `copilot login` OAuth token is preferable when its credential can be exported into the secret store without exposing it.
 
 Pinned image references:
 
@@ -95,6 +99,10 @@ Docker cannot archive files from that tmpfs with `docker cp`. The launcher there
 ### Sidecar cannot read `/run/secrets/...`
 
 Local Docker Compose implements file-backed secrets as read-only bind mounts and preserves the source file mode. A runner-owned `0600` file is unreadable to mitmproxy UID 1000 and the MCP UID 65532. The launcher stages each secret as read-only `0444` inside a runner-owned `0700` directory; the host directory prevents unrelated host users from traversing to the file, and Compose mounts each secret only into its intended sidecar.
+
+### `HTTP 400: Personal Access Tokens are not supported`
+
+The request reached Copilot, but the direct inference endpoint rejected a `github_pat_*` token even though GitHub documents that token type for Copilot CLI automation. Replace the Actions secret with a Copilot-capable OAuth `gho_*` token or supported `ghu_*` app-user token. Do not weaken the proxy or forward the job `${{ github.token }}` as a workaround.
 
 For production, put orchestration in a centrally owned reusable workflow pinned by SHA. A checked-out repository must not be able to replace the launcher that stages credentials.
 
