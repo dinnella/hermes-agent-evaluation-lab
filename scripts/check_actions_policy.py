@@ -49,6 +49,19 @@ def main() -> int:
         "run.sh",
         failures,
     )
+    require(
+        launcher,
+        'install -m 0600 /dev/null "${RUNTIME_DIR}/secrets/copilot_token"',
+        "run.sh",
+        failures,
+    )
+    require(
+        launcher,
+        'install -m 0600 /dev/null "${RUNTIME_DIR}/secrets/mcp_auth_token"',
+        "run.sh",
+        failures,
+    )
+    require(launcher, "chmod 0444", "run.sh", failures)
     reject(launcher, "cp proxy:/mitmproxy-conf", "run.sh", failures)
 
     require(proxy, 'host != "api.githubcopilot.com"', "mitmproxy/policy.py", failures)

@@ -92,6 +92,10 @@ The reference bypasses that entrypoint, runs `/usr/local/bin/mitmdump` directly 
 
 Docker cannot archive files from that tmpfs with `docker cp`. The launcher therefore reads the public CA using `docker compose exec -T proxy cat ...`. On any launcher failure it prints Compose status and the last 200 log lines before cleanup.
 
+### Sidecar cannot read `/run/secrets/...`
+
+Local Docker Compose implements file-backed secrets as read-only bind mounts and preserves the source file mode. A runner-owned `0600` file is unreadable to mitmproxy UID 1000 and the MCP UID 65532. The launcher stages each secret as read-only `0444` inside a runner-owned `0700` directory; the host directory prevents unrelated host users from traversing to the file, and Compose mounts each secret only into its intended sidecar.
+
 For production, put orchestration in a centrally owned reusable workflow pinned by SHA. A checked-out repository must not be able to replace the launcher that stages credentials.
 
 ## Mutation Path

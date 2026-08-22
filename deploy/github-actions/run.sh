@@ -49,6 +49,9 @@ install -m 0600 /dev/null "${RUNTIME_DIR}/secrets/copilot_token"
 install -m 0600 /dev/null "${RUNTIME_DIR}/secrets/mcp_auth_token"
 printf '%s' "${COPILOT_GITHUB_TOKEN}" >"${RUNTIME_DIR}/secrets/copilot_token"
 printf '%s' "${MCP_AUTH_TOKEN}" >"${RUNTIME_DIR}/secrets/mcp_auth_token"
+chmod 0444 \
+    "${RUNTIME_DIR}/secrets/copilot_token" \
+    "${RUNTIME_DIR}/secrets/mcp_auth_token"
 install -m 0600 "${SCRIPT_DIR}/config.yaml" "${RUNTIME_DIR}/hermes/config.yaml"
 unset COPILOT_GITHUB_TOKEN MCP_AUTH_TOKEN
 
