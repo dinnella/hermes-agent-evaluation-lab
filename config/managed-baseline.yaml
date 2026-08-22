@@ -1,0 +1,30 @@
+# Example /etc/hermes/config.yaml. Managed scope is user-configuration control,
+# not sandboxing. Keep secrets out of /etc/hermes/.env because v1 uses mode 0644.
+approvals:
+  mode: manual
+  cron_mode: deny
+  single_query_mode: deny
+
+security:
+  redact_secrets: true
+  tirith_enabled: true
+  tirith_fail_open: false
+  allow_private_urls: false
+  allow_lazy_installs: false
+
+terminal:
+  backend: docker
+  env_passthrough: []
+  docker_forward_env: []
+  docker_mount_cwd_to_workspace: false
+  container_persistent: false
+
+skills:
+  guard_agent_created: true
+  write_approval: true
+
+memory:
+  write_approval: true
+
+tool_loop_guardrails:
+  hard_stop_enabled: true

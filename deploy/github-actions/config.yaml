@@ -1,0 +1,82 @@
+approvals:
+  mode: manual
+  timeout: 60
+  cron_mode: deny
+  single_query_mode: deny
+  deny:
+    - "git push*"
+    - "*curl*|*sh*"
+    - "*wget*|*sh*"
+
+security:
+  redact_secrets: true
+  tirith_enabled: true
+  tirith_fail_open: false
+  allow_private_urls: false
+  allow_lazy_installs: false
+
+model:
+  provider: custom
+  default: gpt-5.4
+  base_url: https://api.githubcopilot.com
+  api_key: hermes-copilot-sentinel
+  api_mode: codex_responses
+  context_length: 128000
+
+terminal:
+  backend: local
+  cwd: /workspace
+  timeout: 180
+  env_passthrough: []
+
+code_execution:
+  mode: strict
+  timeout: 180
+  max_tool_calls: 25
+
+checkpoints:
+  enabled: false
+
+skills:
+  guard_agent_created: true
+  write_approval: true
+
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+  write_approval: true
+
+agent:
+  max_turns: 40
+  run_budget_seconds: 3000
+  verify_on_stop: true
+  disabled_toolsets:
+    - web
+    - browser
+    - image_gen
+    - tts
+    - messaging
+    - cronjob
+
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: true
+
+mcp_servers:
+  platform:
+    url: http://mcp:8080/mcp
+    timeout: 60
+    connect_timeout: 15
+    supports_parallel_tool_calls: false
+    sampling:
+      enabled: false
+    tools:
+      include:
+        - get_workflow_context
+        - get_repository_metadata
+        - get_commit_metadata
+        - get_pull_request
+        - get_check_runs
+        - get_pull_request_files
+      prompts: false
+      resources: false

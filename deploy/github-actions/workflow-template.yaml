@@ -1,0 +1,61 @@
+name: Hermes read-only analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: Bounded repository analysis task
+        required: true
+        type: string
+      model:
+        description: Model available to your GitHub Copilot subscription
+        required: true
+        default: gpt-5.4
+        type: string
+      pull_number:
+        description: Optional pull request number exposed to bounded MCP tools
+        required: false
+        type: string
+
+permissions:
+  checks: read
+  contents: read
+  pull-requests: read
+
+concurrency:
+  group: hermes-analysis-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  analyze:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      # Pin reviewed actions by full SHA. This SHA identifies actions/checkout
+      # v4.2.2; update it deliberately rather than changing to a mutable tag.
+      - name: Check out the requested revision
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+
+      - name: Run isolated Hermes analysis
+        shell: bash
+        env:
+          HERMES_PROMPT: ${{ inputs.prompt }}
+          HERMES_MODEL: ${{ inputs.model }}
+          HERMES_PROVIDER: custom
+          HERMES_PULL_NUMBER: ${{ inputs.pull_number }}
+          HERMES_IMAGE: nousresearch/hermes-agent@sha256:f3cba6abf5ed80d47a271498d663ace5dda87f45000552afb8be8370a35df1b5
+          MITMPROXY_IMAGE: mitmproxy/mitmproxy@sha256:68afa70d7b6ac9d269b88f88534f9ffceb363b4ce31703a78702341fba82e831
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          MCP_AUTH_TOKEN: ${{ github.token }}
+        run: bash deploy/github-actions/run.sh
+
+      - name: Print bounded result
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          result="${RUNNER_TEMP}/hermes-actions-${GITHUB_RUN_ID}/result.md"
+          if [[ -f "${result}" ]]; then
+            sed -n '1,400p' "${result}"
+          fi

@@ -1,0 +1,64 @@
+# Copy selected values into a disposable evaluation profile. Review against the
+# installed Hermes version before use; configuration evolves quickly.
+approvals:
+  mode: manual
+  timeout: 300
+  cron_mode: deny
+  single_query_mode: deny
+  mcp_reload_confirm: true
+  destructive_slash_confirm: true
+  deny:
+    - "git push --force*"
+    - "*curl*|*sh*"
+    - "*wget*|*sh*"
+    - "dd if=* of=/dev/*"
+
+security:
+  redact_secrets: true
+  tirith_enabled: true
+  tirith_fail_open: false
+  allow_private_urls: false
+  allow_lazy_installs: false
+  website_blocklist:
+    enabled: true
+    domains:
+      - "*.internal"
+      - "*.local"
+
+terminal:
+  backend: docker
+  cwd: /workspace
+  timeout: 180
+  env_passthrough: []
+  docker_forward_env: []
+  docker_mount_cwd_to_workspace: false
+  docker_network: false
+  container_cpu: 1
+  container_memory: 2048
+  container_disk: 10240
+  container_persistent: false
+
+code_execution:
+  mode: strict
+  timeout: 180
+  max_tool_calls: 25
+
+checkpoints:
+  enabled: true
+  max_snapshots: 20
+
+skills:
+  guard_agent_created: true
+  write_approval: true
+
+memory:
+  write_approval: true
+
+agent:
+  max_turns: 50
+  run_budget_seconds: 900
+  verify_on_stop: true
+
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: true

@@ -1,0 +1,118 @@
+services:
+  proxy:
+    image: ${MITMPROXY_IMAGE:?Set MITMPROXY_IMAGE to a pinned image digest}
+    command:
+      - mitmdump
+      - --mode
+      - regular@8080
+      - --listen-host
+      - 0.0.0.0
+      - --set
+      - confdir=/mitmproxy-conf
+      - --set
+      - block_global=false
+      - --set
+      - connection_strategy=lazy
+      - --scripts
+      - /addons/policy.py
+    networks:
+      agent:
+        ipv4_address: 172.30.0.2
+      external: {}
+    environment:
+      COPILOT_TOKEN_FILE: /run/secrets/copilot_token
+      GATEWAY_SENTINEL: hermes-copilot-sentinel
+      GATEWAY_ALLOWED_MODELS: ${HERMES_MODEL:-gpt-5.4}
+      GATEWAY_HERMES_IP: 172.30.0.10
+      GATEWAY_MCP_IP: 172.30.0.20
+    secrets:
+      - copilot_token
+    volumes:
+      - mitmproxy-conf:/mitmproxy-conf
+      - ./mitmproxy/policy.py:/addons/policy.py:ro
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('127.0.0.1', 8080), 2).close()"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  mcp:
+    build:
+      context: ./mcp
+    depends_on:
+      - proxy
+    networks:
+      agent:
+        ipv4_address: 172.30.0.20
+    environment:
+      HTTPS_PROXY: http://proxy:8080
+      HTTP_PROXY: http://proxy:8080
+      NO_PROXY: 127.0.0.1,localhost,proxy,mcp
+      SSL_CERT_FILE: /run/mitmproxy-ca.pem
+      MCP_AUTH_TOKEN_FILE: /run/secrets/mcp_auth_token
+      MCP_REPOSITORY: ${GITHUB_REPOSITORY:?Set GITHUB_REPOSITORY}
+      MCP_SHA: ${GITHUB_SHA:?Set GITHUB_SHA}
+      MCP_RUN_ID: ${GITHUB_RUN_ID:?Set GITHUB_RUN_ID}
+      MCP_RUN_ATTEMPT: ${GITHUB_RUN_ATTEMPT:-1}
+      MCP_ACTOR: ${GITHUB_ACTOR:-local}
+      MCP_EVENT_NAME: ${GITHUB_EVENT_NAME:-local}
+      MCP_PULL_NUMBER: ${HERMES_PULL_NUMBER:-}
+    secrets:
+      - mcp_auth_token
+    volumes:
+      - ${RUNTIME_DIR:?Set RUNTIME_DIR}/mitmproxy-ca-cert.pem:/run/mitmproxy-ca.pem:ro
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=2)"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  hermes:
+    image: ${HERMES_IMAGE:?Set HERMES_IMAGE to a pinned image digest}
+    depends_on:
+      mcp:
+        condition: service_healthy
+    networks:
+      agent:
+        ipv4_address: 172.30.0.10
+    working_dir: /workspace
+    environment:
+      HERMES_HOME: /opt/data
+      HTTP_PROXY: http://proxy:8080
+      HTTPS_PROXY: http://proxy:8080
+      NO_PROXY: 127.0.0.1,localhost,mcp
+      SSL_CERT_FILE: /run/mitmproxy-ca.pem
+      REQUESTS_CA_BUNDLE: /run/mitmproxy-ca.pem
+      CURL_CA_BUNDLE: /run/mitmproxy-ca.pem
+    volumes:
+      - ${GITHUB_WORKSPACE:?Set GITHUB_WORKSPACE}:/workspace:ro
+      - ${RUNTIME_DIR:?Set RUNTIME_DIR}/hermes:/opt/data
+      - ${RUNTIME_DIR:?Set RUNTIME_DIR}/mitmproxy-ca-cert.pem:/run/mitmproxy-ca.pem:ro
+    security_opt:
+      - no-new-privileges:true
+    command: version
+
+networks:
+  agent:
+    internal: true
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+  external: {}
+
+volumes:
+  mitmproxy-conf: {}
+
+secrets:
+  copilot_token:
+    file: ${RUNTIME_DIR:?Set RUNTIME_DIR}/secrets/copilot_token
+  mcp_auth_token:
+    file: ${RUNTIME_DIR:?Set RUNTIME_DIR}/secrets/mcp_auth_token

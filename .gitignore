@@ -1,0 +1,4 @@
+deploy/docker/.env
+deploy/docker/.state/
+__pycache__/
+*.pyc
