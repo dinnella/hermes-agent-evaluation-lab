@@ -1,8 +1,10 @@
 services:
   proxy:
     image: ${MITMPROXY_IMAGE:?Set MITMPROXY_IMAGE to a pinned image digest}
+    user: "1000:1000"
+    entrypoint:
+      - /usr/local/bin/mitmdump
     command:
-      - mitmdump
       - --mode
       - regular@8080
       - --listen-host
@@ -28,8 +30,9 @@ services:
     secrets:
       - copilot_token
     volumes:
-      - mitmproxy-conf:/mitmproxy-conf
       - ./mitmproxy/policy.py:/addons/policy.py:ro
+    tmpfs:
+      - /mitmproxy-conf:uid=1000,gid=1000,mode=0700
     cap_drop:
       - ALL
     security_opt:
@@ -107,9 +110,6 @@ networks:
       config:
         - subnet: 172.30.0.0/24
   external: {}
-
-volumes:
-  mitmproxy-conf: {}
 
 secrets:
   copilot_token:

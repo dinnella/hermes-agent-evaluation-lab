@@ -28,10 +28,20 @@ esac
 
 compose=(docker compose -f "${SCRIPT_DIR}/compose.yaml")
 
+on_error() {
+    status="$1"
+    set +e
+    echo "ERROR: Hermes Actions stack failed; container status and recent logs follow" >&2
+    "${compose[@]}" ps --all >&2
+    "${compose[@]}" logs --no-color --tail 200 >&2
+    exit "${status}"
+}
+
 cleanup() {
     "${compose[@]}" down --volumes --remove-orphans >/dev/null 2>&1 || true
     rm -rf "${RUNTIME_DIR}/secrets"
 }
+trap 'on_error $?' ERR
 trap cleanup EXIT INT TERM
 
 install -d -m 0700 "${RUNTIME_DIR}/secrets" "${RUNTIME_DIR}/hermes"
@@ -44,7 +54,8 @@ unset COPILOT_GITHUB_TOKEN MCP_AUTH_TOKEN
 
 "${compose[@]}" build mcp
 "${compose[@]}" up -d --wait --wait-timeout 60 proxy
-"${compose[@]}" cp proxy:/mitmproxy-conf/mitmproxy-ca-cert.pem "${RUNTIME_DIR}/mitmproxy-ca-cert.pem"
+"${compose[@]}" exec -T proxy cat /mitmproxy-conf/mitmproxy-ca-cert.pem \
+    >"${RUNTIME_DIR}/mitmproxy-ca-cert.pem"
 chmod 0444 "${RUNTIME_DIR}/mitmproxy-ca-cert.pem"
 "${compose[@]}" up -d --wait --wait-timeout 60 mcp
 

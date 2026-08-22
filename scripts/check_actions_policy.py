@@ -33,10 +33,23 @@ def main() -> int:
 
     hermes_block = compose.split("  hermes:\n", 1)[1].split("\nnetworks:\n", 1)[0]
     require(compose, "  agent:\n    internal: true", "compose.yaml", failures)
+    require(compose, '    user: "1000:1000"', "compose.yaml", failures)
+    require(compose, "      - /usr/local/bin/mitmdump", "compose.yaml", failures)
+    require(compose, "      - /mitmproxy-conf:uid=1000,gid=1000,mode=0700", "compose.yaml", failures)
     require(hermes_block, "${GITHUB_WORKSPACE:?Set GITHUB_WORKSPACE}:/workspace:ro", "compose.yaml", failures)
     reject(hermes_block, "external:", "compose.yaml hermes service", failures)
     reject(hermes_block, "copilot_token", "compose.yaml hermes service", failures)
     reject(compose, "docker.sock", "compose.yaml", failures)
+    reject(compose, "mitmproxy-conf: {}", "compose.yaml", failures)
+
+    launcher = (ACTIONS_DIR / "run.sh").read_text(encoding="utf-8")
+    require(
+        launcher,
+        'exec -T proxy cat /mitmproxy-conf/mitmproxy-ca-cert.pem',
+        "run.sh",
+        failures,
+    )
+    reject(launcher, "cp proxy:/mitmproxy-conf", "run.sh", failures)
 
     require(proxy, 'host != "api.githubcopilot.com"', "mitmproxy/policy.py", failures)
     require(proxy, 'host != "api.github.com"', "mitmproxy/policy.py", failures)

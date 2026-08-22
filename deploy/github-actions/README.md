@@ -37,7 +37,9 @@ The reference includes both policy components needed for a first test.
 - takes no model-supplied repository, SHA, or pull-request target arguments;
 - contains no general shell or arbitrary URL-fetch tool.
 
-Mitmproxy is intentionally used as an inspecting forward proxy, so its CA must be trusted by the two clients. This is not transparent mode and requires no host routing privileges. The CA private key remains in the proxy-only Docker volume; only the public CA certificate is copied out.
+Mitmproxy is intentionally used as an inspecting forward proxy, so its CA must be trusted by the two clients. This is not transparent mode and requires no host routing privileges. The CA private key remains in the proxy-only tmpfs; only the public CA certificate is copied out.
+
+The CA state is held on a UID-owned tmpfs. Docker cannot archive files from that mount with `docker cp`, so the launcher streams the public certificate through `docker compose exec`; the private key is never copied to the runner filesystem.
 
 The sample deliberately keeps `security.allow_private_urls: false`. In the pinned Hermes baseline, native configured HTTP MCP servers use the MCP client path rather than the web/browser URL-tool SSRF gate, and native URL validation accepts HTTP(S) endpoints. Verify this against the selected Hermes image before use. Do not enable private URLs globally merely to make the sidecar reachable.
 
@@ -79,6 +81,16 @@ Use get_workflow_context and get_repository_metadata from the platform MCP. Then
 ```
 
 The run is successful only when direct socket egress fails, the Copilot request succeeds through mitmproxy, both MCP tools execute, the checkout remains unchanged, and no credential appears in logs.
+
+## Troubleshooting
+
+### Proxy exits with code 3 during startup
+
+The upstream mitmproxy image entrypoint uses `stat` and `usermod` before dropping privileges. It fails when all capabilities are already dropped, producing errors such as `stat: Permission denied` and `usermod: invalid user ID '-g'`.
+
+The reference bypasses that entrypoint, runs `/usr/local/bin/mitmdump` directly as UID/GID 1000, and supplies a UID-owned tmpfs for CA state. Do not remove those Compose settings without rerunning the hardened-container startup test.
+
+Docker cannot archive files from that tmpfs with `docker cp`. The launcher therefore reads the public CA using `docker compose exec -T proxy cat ...`. On any launcher failure it prints Compose status and the last 200 log lines before cleanup.
 
 For production, put orchestration in a centrally owned reusable workflow pinned by SHA. A checked-out repository must not be able to replace the launcher that stages credentials.
 
